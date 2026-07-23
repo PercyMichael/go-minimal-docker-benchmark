@@ -4,6 +4,16 @@ A production-ready, ultra-lightweight REST API written in Go and containerized u
 
 ---
 
+## 🎯 Purpose & Target Audience ("Who is this for?")
+
+This repository serves as a **production blueprint and engineering benchmark** for:
+
+- **👨‍💻 DevOps & Cloud Infrastructure Engineers**: A reference template for microservice container optimization, zero-CVE image security, and reducing Docker image footprint by **58.4%** (from 13.8 MB to 5.74 MB).
+- **📱 Mobile (Flutter) & Web Developers**: A high-performance, low-latency Go REST API starter designed to serve mobile app frontends with sub-millisecond response times and minimal server resource usage (<10 MB RAM).
+- **💼 Technical Recruiters & Hiring Managers**: A concrete demonstration of senior backend practices—including graceful shutdown (`SIGTERM`/`SIGINT`), DoS protection timeouts, non-root security context (`UID 65534`), and multi-stage Docker optimization.
+
+---
+
 ## 📋 Features & Architecture
 
 - **Ultra-Fast & Lightweight**: Built with Go 1.24 standard library (`net/http`).
