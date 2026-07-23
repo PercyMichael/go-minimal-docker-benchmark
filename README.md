@@ -126,3 +126,4 @@ curl http://localhost:8080/
 # Test Healthcheck endpoint
 curl http://localhost:8080/healthz
 ```
+# go-minimal-docker-benchmark
