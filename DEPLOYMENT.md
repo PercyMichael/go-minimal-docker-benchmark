@@ -173,38 +173,38 @@ Under heavy traffic, un-optimized databases can crash due to **connection exhaus
 - **Primary Master**: Handles all `INSERT`, `UPDATE`, and `DELETE` operations.
 - **Read Replicas**: Multiple read-only database nodes receiving real-time streaming updates. Serves 90% of traffic (`SELECT` queries). If 1 replica fails, traffic routes to remaining replicas without downtime.
 
-### 2. Redis In-Memory RAM Caching
-Go checks Redis RAM before querying SQL:
+### 2. Redis In-Memory RAM Caching & Replication Setup
+
+#### Why Redis Needs Replicas:
+If a single Redis instance crashes under traffic, 100% of requests suddenly hit the SQL database at the exact same millisecond—a catastrophic event known as a **Cache Avalanche**!
+
+#### Redis Replication Patterns:
+- **Single Redis Node (0 to 100k Users)**: 1 container running alongside the Go app (~50MB RAM).
+- **Redis Sentinel (100k to 1M Users)**: 1 Master Redis Node + 2 Replica Read Nodes monitored by Redis Sentinel. If the Master dies, Sentinel automatically promotes a replica to Master in **< 1 second**!
+- **Redis Cluster (1M+ Users)**: Shards data across multiple Redis nodes across 16,384 hash slots, processing **millions of operations per second**.
+
+#### Preventing "Cache Avalanche" in Go:
 ```go
-// 1. Check Redis RAM first (~1ms response time)
+// 1. Randomized TTL: Add random jitter to cache expiration so keys don't expire all at once
+ttl := 10*time.Minute + time.Duration(rand.Intn(60))*time.Second
+redisClient.Set(ctx, "book:101", bookJSON, ttl)
+
+// 2. Fallback Cache Hit with Circuit Breaker
 cachedJSON, err := redisClient.Get(ctx, "book:101").Result()
 if err == nil {
     w.Write([]byte(cachedJSON))
     return
 }
-
-// 2. Fallback to SQL Database on cache miss
-book := queryDatabase("SELECT * FROM books WHERE id=101")
-redisClient.Set(ctx, "book:101", book, 10*time.Minute)
 ```
 
 ### 3. Connection Pooling (`pgxpool` / PgBouncer)
 Maintains a fixed pool of active connections (e.g. 50 reused connections) instead of opening thousands of individual connections per request, preventing Out-Of-Memory (OOM) crashes.
 
-### 4. Code Pattern for Dual DB Connections (Go)
-```go
-// Master DB connection for Writes
-dbWrite, _ := pgxpool.New(ctx, os.Getenv("DB_WRITE_URL"))
-
-// Read Replica connection for Reads
-dbRead, _ := pgxpool.New(ctx, os.Getenv("DB_READ_URL"))
-```
-
 ---
 
 ## 🛠️ Infrastructure as Code (IaC) with Terraform
 
-Instead of manually configuring servers and cloud databases, professionals define entire multi-server architectures in a declarative file (`main.tf`):
+Instead of manually configuring servers, databases, and Redis clusters, professionals define multi-server architectures in a declarative file (`main.tf`):
 
 ```hcl
 # main.tf - Infrastructure as Code
@@ -222,6 +222,14 @@ resource "digitalocean_database_cluster" "postgres" {
   version    = "15"
   size       = "db-s-1vcpu-1gb"
   node_count = 3  # 1 Master + 2 Read Replicas
+}
+
+resource "digitalocean_database_cluster" "redis" {
+  name       = "production-redis"
+  engine     = "redis"
+  version    = "7"
+  size       = "db-s-1vcpu-1gb"
+  node_count = 2  # 1 Master + 1 Replica
 }
 ```
 Running `terraform apply` provisions, connects, and updates the entire cloud cluster automatically in 2 minutes.
@@ -248,7 +256,7 @@ Running `terraform apply` provisions, connects, and updates the entire cloud clu
 - **Capacity**: Serves **~200,000+ requests per minute**.
 
 ### Phase 3: Decoupled Multi-Node Cluster (500k to 5M Users)
-- **Decouple Database & Cache**: Managed PostgreSQL (AWS RDS / DigitalOcean DB) + Redis RAM cache.
+- **Decouple Database & Cache**: Managed PostgreSQL (AWS RDS / DigitalOcean DB) + Redis Sentinel RAM cache.
 - **Global Load Balancer**: Cloudflare LB / AWS ALB routing to 3 regional VPS nodes.
 
 ### Phase 4: Kubernetes Auto-Scaling (5M+ Users)
