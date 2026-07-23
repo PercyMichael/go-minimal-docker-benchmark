@@ -9,7 +9,7 @@ A production-ready, ultra-lightweight REST API written in Go and containerized u
 This repository serves as a **production blueprint and microservice benchmark** for:
 
 - **Backend & Software Engineers**: A reference implementation for building ultra-fast Go REST APIs with sub-millisecond response times and minimal memory footprint (<10 MB RAM).
-- **DevOps & Security Engineers**: A benchmark for microservice container optimization, zero-CVE image security, non-root execution context (`UID 65534`), and reducing Docker image footprint by **58.4%** (from 13.8 MB to 5.74 MB).
+- **DevOps & Security Engineers**: A benchmark for microservice container optimization, zero-CVE image security, non-root execution context (`UID 65534`), automated VPS deployment, and reducing Docker image footprint by **58.4%** (from 13.8 MB to 5.74 MB).
 
 ---
 
@@ -25,6 +25,7 @@ This repository serves as a **production blueprint and microservice benchmark** 
   - `-ldflags="-s -w"` strips debugging symbols and symbol tables.
   - Runs as an unprivileged non-root user (`UID 65534` / `nobody`).
   - Read-only root filesystem compatible (`read_only: true`).
+- **Automated CI/CD**: Fully automated test, build, containerize, and SSH VPS deployment pipeline via [GitHub Actions](file:///.github/workflows/deploy.yml).
 
 ---
 
@@ -32,6 +33,7 @@ This repository serves as a **production blueprint and microservice benchmark** 
 
 ```text
 .
+├── .github/workflows/deploy.yml # GitHub Actions production CI/CD pipeline
 ├── Dockerfile                  # Active production Dockerfile (v3 Scratch)
 ├── Dockerfile.v1-alpine        # Version 1: Alpine Linux Build (13.80 MB)
 ├── Dockerfile.v2-distroless     # Version 2: Google Distroless Build (7.61 MB)
@@ -41,6 +43,7 @@ This repository serves as a **production blueprint and microservice benchmark** 
 ├── main.go                     # Production Go REST API
 ├── .dockerignore               # Docker build ignore rules
 ├── .gitignore                  # Git repository ignore rules
+├── DEPLOYMENT.md               # VPS deployment & Caddy Auto-SSL guide
 └── README.md                   # Project documentation
 ```
 
@@ -106,6 +109,12 @@ During development, the container went through **3 distinct build iterations**, 
 
 ---
 
+## 🌐 VPS & CI/CD Deployment Guide
+
+For full instructions on setting up a $4/month VPS, installing Caddy for automatic HTTPS, setting up GitHub Secrets, and deploying automatically, see the **[DEPLOYMENT.md](file:///Volumes/B/projects/devops%20go/DEPLOYMENT.md)** guide.
+
+---
+
 ## 🚀 Quick Start Guide
 
 ### 1. Running Locally (Without Docker)
@@ -126,4 +135,3 @@ curl http://localhost:8080/
 # Test Healthcheck endpoint
 curl http://localhost:8080/healthz
 ```
-# go-minimal-docker-benchmark
