@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  book-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: json-book-api
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    read_only: true
+    user: "65534:65534"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

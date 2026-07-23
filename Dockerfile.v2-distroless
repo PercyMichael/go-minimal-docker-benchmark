@@ -1,0 +1,13 @@
+# Version 2: Google Distroless Runtime (7.61 MB)
+FROM golang:1.24-alpine AS builder
+RUN apk update && apk upgrade --no-cache
+WORKDIR /app
+COPY go.mod main.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/server main.go
+
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
+COPY --from=builder /app/server /app/server
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app/server"]

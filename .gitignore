@@ -1,0 +1,10 @@
+# Binaries
+server
+main
+*.exe
+*.out
+
+# IDE & OS files
+.DS_Store
+.vscode/
+.idea/
