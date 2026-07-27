@@ -206,9 +206,38 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 
 ---
 
-## 🎁 Referral & Promo Engine (`internal/promo/service.go`)
+## 🚀 Go-To-Market (GTM) & Growth Playbook
 
-Based on FARAS's viral growth mechanics (`"Get 1500 UGX when a friend takes their first trip"`):
+### 1. Boda Stage Chairman Strategy
+- Target physical Boda stages (Acacia, Wandegeya, MUBS Nakawa, Kampala Rd).
+- Offer Stage Chairmen **`5,000 UGX` MoMo bonus** per active driver onboarded.
+- Pitch drivers: *"Pay 8% Commission, Not 15%! Keep More Cash Every Ride"*.
+
+### 2. Viral Referral Engine (`1,500 UGX`)
+- *"Share code: Your friend gets `3,000 UGX` off 1st ride; you get `1,500 UGX` wallet credit!"*
+- Append shareable links to all digital receipts sent via SMS & WhatsApp.
+
+### 3. Reflective Jacket Street Branding
+- Equip drivers with branded reflective jackets & helmets.
+- Deduct jacket cost (`15,000 UGX`) in small **`500 UGX` daily wallet deductions** over 30 days.
+
+---
+
+## 💵 Financial Model & 3-Month Lean Launch Budget
+
+| Expense Category | Item Description | Cost (USD) | Cost (UGX) |
+| :--- | :--- | :--- | :--- |
+| **1. Servers & Tech** | Hetzner / DigitalOcean $10/mo VPS (Go + Postgres + Redis) + Domain | `$45` | `165,000 UGX` |
+| **2. SMS & MoMo API** | SMS OTP Verification (Africa's Talking) + MoMo API setup | `$90` | `335,000 UGX` |
+| **3. Driver Branding** | 50 Branded Reflective Jackets & Helmets *(Recouped via daily 500 UGX deductions!)* | `$600` | `2,250,000 UGX` |
+| **4. Boda Stage Incentives**| Chairmen bonuses (`5,000 UGX` / driver) + Driver initial wallet bonus | `$135` | `500,000 UGX` |
+| **5. Rider Referral Promos**| First-ride discounts (`1,000 UGX` off 500 rides) + Student referral fund | `$200` | `750,000 UGX` |
+| **6. Business Legal** | URSB Company Registration (Kampala) | `$40` | `150,000 UGX` |
+| **TOTAL PILOT BUDGET** | **Minimal Bootstrapped Pilot (50 Drivers)** | **`~$1,110 USD`** | **`~4,150,000 UGX`** |
+
+---
+
+## 🎁 Referral & Promo Engine (`internal/promo/service.go`)
 
 ```sql
 -- 00004_create_promotions_table.sql
