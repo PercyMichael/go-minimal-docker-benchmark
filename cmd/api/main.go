@@ -18,6 +18,7 @@ import (
 	"json-books-app/handlers"
 	"json-books-app/internal/config"
 	"json-books-app/internal/db"
+	"json-books-app/internal/logger"
 	"json-books-app/middleware"
 )
 
@@ -27,7 +28,19 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"UP","database":"postgresql"}`))
 }
 
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if db.DB == nil || db.DB.Ping() != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"status":"DOWN","reason":"database unavailable"}`))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"READY","database":"connected"}`))
+}
+
 func main() {
+	logger.InitLogger()
 	cfg := config.Load()
 
 	// Initialize PostgreSQL Database

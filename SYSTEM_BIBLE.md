@@ -95,6 +95,8 @@ ride-share-uganda/
 │   ├── wallet/                     # MTN MoMo & Airtel Money driver wallet top-ups
 │   │   ├── service.go
 │   │   └── momo.go                 # MoMo API integration
+│   ├── logger/                     # Scale-ready structured JSON logging (log/slog)
+│   │   └── logger.go
 │   ├── middleware/
 │   │   └── auth.go                 # Session token & Bearer auth middleware
 │   └── models/
@@ -203,6 +205,21 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 1. Driver taps **"Confirm Cash Received (3,000 UGX)"**.
 2. Go backend automatically deducts 8% commission (**`240 UGX`**) from driver's prepaid MTN/Airtel MoMo wallet.
 3. Driver keeps **`2,760 UGX` net cash profit** (+210 UGX more than FARAS) and returns `ONLINE`.
+
+---
+
+## 🚀 Scale Readiness & Infrastructure Engineering (8 Pillars)
+
+| Pillar | Mechanism | Architectural Rationale |
+| :--- | :--- | :--- |
+| **1. Dual Health Probes** | `/healthz` & `/readyz` | Liveness (`/healthz`) checks if process is running; Readiness (`/readyz`) pings DB to prevent sending traffic to broken instances. |
+| **2. Structured JSON Logging** | `log/slog` | Emits structured JSON logs to `stdout` for instant searching across 50+ nodes in Loki / Grafana. |
+| **3. Database Safety** | `SetMaxOpenConns` + `pgBouncer` | Limits Go DB pools (`25`) and uses `pgBouncer` so 10,000+ goroutines never overwhelm PostgreSQL. |
+| **4. Rate Limiting** | Redis Token Bucket | Caps users/IPs at 60 req/min across distributed servers using Redis middleware. |
+| **5. Idempotency Keys** | `Idempotency-Key` Header | Prevents duplicate MoMo wallet deductions or payments if 3G/4G network drops mid-request. |
+| **6. Async Background Workers** | `Asynq` + Redis | Offloads SMS OTP sending and Push Notifications to background workers, keeping API responses sub-10ms. |
+| **7. Graceful Draining** | 15s `SIGTERM` Drain | Waits 15 seconds during shutdown to complete active WebSocket & HTTP requests cleanly. |
+| **8. Zero-Downtime DB Migrations** | Backward Compatible SQL | Never drops active columns in production; always adds new columns first, deploys code, then cleans up. |
 
 ---
 
