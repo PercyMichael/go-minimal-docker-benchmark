@@ -101,6 +101,11 @@ ride-share-uganda/
 │   │   └── auth.go                 # Session token & Bearer auth middleware
 │   └── models/
 │       └── models.go               # Shared domain structs & API response envelopes
+├── deploy/
+│   └── terraform/
+│       └── main.tf                 # Production Infrastructure-as-Code blueprint
+├── Caddyfile                       # Auto-HTTPS & Cloudflare proxy configuration
+├── docker-compose.prod.yml         # Production multi-container Docker Compose
 ├── .env                            # Active local environment config
 ├── .env.example                    # Environment variable template
 ├── Dockerfile                      # Active production Dockerfile (scratch base)
@@ -256,6 +261,14 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 2. **Cloudflare DNS**: Point domain to Cloudflare for free SSL & DDoS protection.
 3. **DigitalOcean Droplet**: $12/month Ubuntu 24.04 Droplet in Frankfurt node.
 4. **GitHub Secrets**: Add `SSH_HOST`, `SSH_USER`, `SSH_KEY` to GitHub repo for 30-second automated deployment via [`.github/workflows/deploy.yml`](file:///.github/workflows/deploy.yml).
+
+### 4. Infrastructure Scaling Management Matrix (Terraform IaC)
+
+| Growth Stage | Traffic Volume | Terraform IaC Change | Execution Command | Time to Scale |
+| :--- | :--- | :--- | :--- | :--- |
+| **Stage 1: Vertical Upgrade** | 0 – 10,000 Drivers | Update `size = "s-4vcpu-8gb"` in `main.tf` | `terraform apply` | **< 90 seconds** |
+| **Stage 2: Horizontal Load Balancer** | 10,000 – 50,000 Drivers | Add `count = 3` + `digitalocean_loadbalancer` in `main.tf` | `terraform apply` | **< 3 minutes** |
+| **Stage 3: Managed High-Availability DB** | 50,000+ Drivers | Add `digitalocean_database_cluster` in `main.tf` | `terraform apply` | **< 5 minutes** |
 
 ---
 
