@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"json-books-app/db"
+	"json-books-app/internal/db"
 	"json-books-app/models"
 )
 
@@ -94,8 +94,8 @@ func GetAuthenticatedUser(r *http.Request) (*models.User, bool) {
 }
 
 // AuthRequired middleware enforces that the user is logged in
-func AuthRequired(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func AuthRequired(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var token string
 
 		// 1. Try Cookie
@@ -141,12 +141,12 @@ func AuthRequired(next http.HandlerFunc) http.HandlerFunc {
 		// Inject user into context
 		ctx := context.WithValue(r.Context(), UserContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	}
+	})
 }
 
 // OptionalAuth middleware injects user if session is valid, but does not block request if unauthenticated
-func OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func OptionalAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var token string
 		cookie, err := r.Cookie(SessionCookieName)
 		if err == nil && cookie.Value != "" {
@@ -160,7 +160,7 @@ func OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 		next.ServeHTTP(w, r)
-	}
+	})
 }
 
 func respondJSON(w http.ResponseWriter, status int, resp models.APIResponse) {

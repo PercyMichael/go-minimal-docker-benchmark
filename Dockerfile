@@ -1,21 +1,20 @@
 # === STAGE 1: Build the binary ===
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 ENV CGO_ENABLED=0 \
     GOOS=linux
 
 WORKDIR /app
 
-# Copy module definition
-COPY go.mod ./
-
-# Copy source code
+# Copy module definition & code
+COPY go.mod go.sum ./
+RUN go mod download || true
 COPY . .
 
 # Build statically compiled binary:
 # -trimpath: Removes local workspace paths from binary
 # -ldflags="-s -w": Strips DWARF & debug symbol table
-RUN go build -trimpath -ldflags="-s -w" -o /app/server .
+RUN go build -trimpath -ldflags="-s -w" -o /app/server ./cmd/api
 
 # === STAGE 2: Final ultra-small scratch image ===
 FROM scratch

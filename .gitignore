@@ -9,8 +9,8 @@ main
 .vscode/
 .idea/
 
-# Database files
-*.db
-*.db-*
-*.sqlite
+# Environment files
+.env
+.env.local
+
 

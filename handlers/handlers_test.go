@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"json-books-app/db"
 	"json-books-app/handlers"
+	"json-books-app/internal/db"
 	"json-books-app/middleware"
 	"json-books-app/models"
 )
@@ -88,7 +88,7 @@ func TestAuthAndNotesLifecycle(t *testing.T) {
 	// 4. Test Unauthenticated Access to Notes
 	reqNotesUnauth := httptest.NewRequest(http.MethodGet, "/api/notes", nil)
 	wNotesUnauth := httptest.NewRecorder()
-	middleware.AuthRequired(handlers.NotesHandler)(wNotesUnauth, reqNotesUnauth)
+	middleware.AuthRequired(http.HandlerFunc(handlers.NotesHandler)).ServeHTTP(wNotesUnauth, reqNotesUnauth)
 	if wNotesUnauth.Result().StatusCode != http.StatusUnauthorized {
 		t.Fatalf("Expected status 401 Unauthorized, got %d", wNotesUnauth.Result().StatusCode)
 	}
@@ -106,7 +106,7 @@ func TestAuthAndNotesLifecycle(t *testing.T) {
 	reqCreate.AddCookie(sessionCookie)
 	wCreate := httptest.NewRecorder()
 
-	middleware.AuthRequired(handlers.NotesHandler)(wCreate, reqCreate)
+	middleware.AuthRequired(http.HandlerFunc(handlers.NotesHandler)).ServeHTTP(wCreate, reqCreate)
 	if wCreate.Result().StatusCode != http.StatusCreated {
 		t.Fatalf("Expected status 201 Created for note creation, got %d", wCreate.Result().StatusCode)
 	}
@@ -129,7 +129,7 @@ func TestAuthAndNotesLifecycle(t *testing.T) {
 	reqList.AddCookie(sessionCookie)
 	wList := httptest.NewRecorder()
 
-	middleware.AuthRequired(handlers.NotesHandler)(wList, reqList)
+	middleware.AuthRequired(http.HandlerFunc(handlers.NotesHandler)).ServeHTTP(wList, reqList)
 	if wList.Result().StatusCode != http.StatusOK {
 		t.Fatalf("Expected status 200 OK for list notes, got %d", wList.Result().StatusCode)
 	}
@@ -147,7 +147,7 @@ func TestAuthAndNotesLifecycle(t *testing.T) {
 	reqUpdate.AddCookie(sessionCookie)
 	wUpdate := httptest.NewRecorder()
 
-	middleware.AuthRequired(handlers.NotesHandler)(wUpdate, reqUpdate)
+	middleware.AuthRequired(http.HandlerFunc(handlers.NotesHandler)).ServeHTTP(wUpdate, reqUpdate)
 	if wUpdate.Result().StatusCode != http.StatusOK {
 		t.Fatalf("Expected status 200 OK for note update, got %d", wUpdate.Result().StatusCode)
 	}
@@ -157,7 +157,7 @@ func TestAuthAndNotesLifecycle(t *testing.T) {
 	reqDelete.AddCookie(sessionCookie)
 	wDelete := httptest.NewRecorder()
 
-	middleware.AuthRequired(handlers.NotesHandler)(wDelete, reqDelete)
+	middleware.AuthRequired(http.HandlerFunc(handlers.NotesHandler)).ServeHTTP(wDelete, reqDelete)
 	if wDelete.Result().StatusCode != http.StatusOK {
 		t.Fatalf("Expected status 200 OK for note deletion, got %d", wDelete.Result().StatusCode)
 	}

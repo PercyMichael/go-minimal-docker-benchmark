@@ -21,10 +21,9 @@ func InitDB(targetDBName string) (*sql.DB, error) {
 
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		// Default connection string using localhost postgres
 		user := os.Getenv("PGUSER")
 		if user == "" {
-			user = "user" // default Mac user
+			user = "user"
 		}
 		password := os.Getenv("PGPASSWORD")
 		host := os.Getenv("PGHOST")
@@ -43,15 +42,12 @@ func InitDB(targetDBName string) (*sql.DB, error) {
 		}
 	}
 
-	// 1. Ensure target database exists by connecting to default 'postgres' or template DB
 	if err := ensureDatabaseExists(connStr, targetDBName); err != nil {
 		log.Printf("Warning during DB creation check: %v", err)
 	}
 
-	// 2. Connect to target database
 	database, err := sql.Open("postgres", connStr)
 	if err != nil {
-		// Fallback try with postgres user if default user failed
 		if !strings.Contains(connStr, "postgres:") && os.Getenv("DATABASE_URL") == "" {
 			fallbackStr := "postgres://postgres@localhost:5432/" + targetDBName + "?sslmode=disable"
 			log.Printf("Retrying DB connection with fallback: %s", fallbackStr)
@@ -68,7 +64,6 @@ func InitDB(targetDBName string) (*sql.DB, error) {
 	database.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := database.Ping(); err != nil {
-		// Try fallback if initial ping failed
 		if !strings.Contains(connStr, "postgres:") && os.Getenv("DATABASE_URL") == "" {
 			fallbackStr := "postgres://postgres@localhost:5432/" + targetDBName + "?sslmode=disable"
 			log.Printf("Ping failed, trying postgres user fallback: %s", fallbackStr)
@@ -93,7 +88,6 @@ func InitDB(targetDBName string) (*sql.DB, error) {
 }
 
 func ensureDatabaseExists(connStr string, targetDBName string) error {
-	// Replace target database name with 'postgres' to connect to default database server
 	var rootConnStr string
 	if strings.Contains(connStr, "/"+targetDBName) {
 		rootConnStr = strings.Replace(connStr, "/"+targetDBName, "/postgres", 1)
@@ -108,7 +102,6 @@ func ensureDatabaseExists(connStr string, targetDBName string) error {
 	defer rootDB.Close()
 
 	if err := rootDB.Ping(); err != nil {
-		// Try with postgres user
 		rootConnStr = "postgres://postgres@localhost:5432/postgres?sslmode=disable"
 		rootDB, err = sql.Open("postgres", rootConnStr)
 		if err != nil {

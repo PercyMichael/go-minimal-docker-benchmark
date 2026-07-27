@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"json-books-app/db"
+	"json-books-app/internal/db"
 	"json-books-app/middleware"
 	"json-books-app/models"
 )
