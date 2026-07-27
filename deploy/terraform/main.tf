@@ -49,26 +49,79 @@ provider "cloudflare" {
   api_token = var.cloudflare_api_token
 }
 
+# Private VPC Network for Secure Inter-Server Communication
+resource "digitalocean_vpc" "app_vpc" {
+  name   = "ride-share-vpc"
+  region = var.region
+}
+
 # DigitalOcean SSH Key for deployment access
 resource "digitalocean_ssh_key" "deployer" {
   name       = "ride-share-deployer-key"
   public_key = file("~/.ssh/id_rsa.pub")
 }
 
-# DigitalOcean Droplet (Ubuntu 24.04, 2 vCPU, 4GB RAM)
+# 1. Dedicated Go Web App API Droplet Server
 resource "digitalocean_droplet" "api_server" {
   image              = "ubuntu-24-04-x64"
   name               = "ride-share-api-prod"
   region             = var.region
   size               = "s-2vcpu-4gb"
+  vpc_uuid           = digitalocean_vpc.app_vpc.id
   monitoring         = true
   ipv6               = true
   ssh_keys           = [digitalocean_ssh_key.deployer.fingerprint]
 
-  tags = ["ride-share", "production"]
+  tags = ["ride-share", "production", "api"]
 }
 
-# DigitalOcean Cloud Firewall
+# 2. Dedicated Managed PostgreSQL 16 + PostGIS Database Cluster
+resource "digitalocean_database_cluster" "postgres" {
+  name       = "ride-share-postgres-db"
+  engine     = "pg"
+  version    = "16"
+  size       = "db-s-1vcpu-1gb"
+  node_count = 1
+  region     = var.region
+  vpc_uuid   = digitalocean_vpc.app_vpc.id
+
+  tags = ["ride-share", "production", "database"]
+}
+
+# 3. Dedicated Managed Redis 7 Spatial GEO Cache Cluster
+resource "digitalocean_database_cluster" "redis" {
+  name       = "ride-share-redis-cache"
+  engine     = "redis"
+  version    = "7"
+  size       = "db-s-1vcpu-1gb"
+  node_count = 1
+  region     = var.region
+  vpc_uuid   = digitalocean_vpc.app_vpc.id
+
+  tags = ["ride-share", "production", "cache"]
+}
+
+# Database Firewall: Allow DB connections ONLY from Go Web App via Private VPC
+resource "digitalocean_database_firewall" "postgres_fw" {
+  cluster_id = digitalocean_database_cluster.postgres.id
+
+  rule {
+    type  = "droplet"
+    value = digitalocean_droplet.api_server.id
+  }
+}
+
+# Redis Firewall: Allow Redis connections ONLY from Go Web App via Private VPC
+resource "digitalocean_database_firewall" "redis_fw" {
+  cluster_id = digitalocean_database_cluster.redis.id
+
+  rule {
+    type  = "droplet"
+    value = digitalocean_droplet.api_server.id
+  }
+}
+
+# DigitalOcean Cloud Web Firewall
 resource "digitalocean_firewall" "web_firewall" {
   name = "ride-share-firewall"
 
@@ -118,8 +171,20 @@ resource "cloudflare_record" "api_dns" {
 }
 
 output "server_ip" {
-  description = "Public IPv4 address of production Droplet"
+  description = "Public IPv4 address of production Web Droplet"
   value       = digitalocean_droplet.api_server.ipv4_address
+}
+
+output "postgres_uri" {
+  description = "Managed PostgreSQL Private VPC Connection URI"
+  value       = digitalocean_database_cluster.postgres.private_uri
+  sensitive   = true
+}
+
+output "redis_uri" {
+  description = "Managed Redis Private VPC Connection URI"
+  value       = digitalocean_database_cluster.redis.private_uri
+  sensitive   = true
 }
 
 output "domain_url" {
