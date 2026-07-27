@@ -177,6 +177,35 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 
 ---
 
+## ⚡️ End-to-End Operational Workflow
+
+### Step 1: Rider Requests a Ride (Upfront Low Price)
+1. Rider inputs pickup (**Semawata Rd**) and dropoff (**Komamboga**).
+2. Go Pricing Engine computes distance (`4.2km`), duration (`11 mins`), and calculates upfront fare (**`3,000 UGX`** or **`2,500 UGX`** with promo).
+3. Rider sees: **"Upfront Cash Fare: 3,000 UGX"** and taps Request.
+
+### Step 2: Instant Driver Matching (Redis GEO <2ms)
+1. Go backend executes Redis query: `GEORADIUS drivers:available <pickup_lng> <pickup_lat> 3 km`.
+2. Finds closest driver (e.g., Timothy on his Boda 500m away).
+3. Sends WebSocket notification to driver: *"New Trip: Semawata Rd ➔ Komamboga (Fare: 3,000 UGX, Net: 2,760 UGX)"*.
+
+### Step 3: Realtime GPS Streaming (WebSockets)
+1. Driver accepts. Trip state becomes `DRIVER_MATCHED`.
+2. Driver phone sends GPS updates every 3s over WebSockets to update live map.
+3. Driver arrives ➔ Taps **"Arrived"** (`DRIVER_ARRIVED`).
+
+### Step 4: Dropoff & Cash Payment (Digital Change Wallet)
+1. Driver completes trip (`COMPLETED`). Screen displays: **"Pay Driver: 3,000 UGX Cash"**.
+2. Rider pays `5,000 UGX` note. Driver returns `2,000 UGX` note.
+3. *(If driver lacks 500 UGX change, driver taps "Credit 500 UGX Change", which credits 500 UGX to rider's app wallet for their next trip).*
+
+### Step 5: Automated 8% Commission Settlement
+1. Driver taps **"Confirm Cash Received (3,000 UGX)"**.
+2. Go backend automatically deducts 8% commission (**`240 UGX`**) from driver's prepaid MTN/Airtel MoMo wallet.
+3. Driver keeps **`2,760 UGX` net cash profit** (+210 UGX more than FARAS) and returns `ONLINE`.
+
+---
+
 ## 🎁 Referral & Promo Engine (`internal/promo/service.go`)
 
 Based on FARAS's viral growth mechanics (`"Get 1500 UGX when a friend takes their first trip"`):
