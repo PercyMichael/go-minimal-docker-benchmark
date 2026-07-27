@@ -1,0 +1,23 @@
+# Production Caddy Reverse Proxy Configuration
+# Integrates seamlessly with Cloudflare DNS & Proxying
+
+{
+    admin off
+    auto_https off
+}
+
+:80 {
+    # Forward real client IP from Cloudflare
+    header_up X-Forwarded-For {header.CF-Connecting-IP}
+    header_up X-Forwarded-Proto {scheme}
+
+    # Reverse proxy traffic to Go API container
+    reverse_proxy app:8080 {
+        health_uri /readyz
+        health_interval 5s
+        health_timeout 2s
+    }
+
+    # Enable gzip compression
+    encode gzip zstd
+}
