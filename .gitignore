@@ -8,3 +8,9 @@ main
 .DS_Store
 .vscode/
 .idea/
+
+# Database files
+*.db
+*.db-*
+*.sqlite
+

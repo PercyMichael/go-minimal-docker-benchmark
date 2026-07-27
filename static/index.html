@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenNotes — Cozy Note Taking</title>
+    <meta name="description" content="A warm, cozy note-taking space built with Go, PostgreSQL, Tailwind CSS, HTMX, and Alpine.js.">
+    <!-- Google Fonts: Newsreader (Serif) & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
+    
+    <!-- Standard Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        serif: ['"Newsreader"', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    <!-- HTMX & Alpine.js CDNs -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-[#faf8f5] text-slate-900 font-sans antialiased min-h-screen flex flex-col" x-data="{ authOpen: false, authMode: 'login', noteOpen: false }">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- Floating Cozy App Header Bar (No Edge-to-Edge Bar) -->
+    <header class="max-w-4xl w-[92%] mx-auto mt-6 bg-white/90 backdrop-blur-md border border-amber-900/10 shadow-sm rounded-full px-6 py-3 flex items-center justify-between sticky top-4 z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-amber-700 text-amber-50 rounded-full flex items-center justify-center text-base shadow-xs">
+                <i class="ri-book-3-line"></i>
+            </div>
+            <span class="font-serif font-extrabold text-xl tracking-tight text-slate-900">Zen<span class="text-amber-700 italic">Notes</span></span>
+        </div>
+
+        <div class="relative flex items-center w-64 md:w-80">
+            <i class="ri-search-line absolute left-3.5 text-amber-900/40 text-sm"></i>
+            <input type="text" name="q" placeholder="Search your thoughts..." autocomplete="off"
+                   hx-get="/htmx/notes" hx-trigger="keyup changed delay:300ms" hx-target="#notes-grid"
+                   class="w-full bg-amber-50/60 focus:bg-white border border-amber-900/10 rounded-full pl-9 pr-4 py-1.5 text-xs text-slate-800 placeholder-amber-900/40 focus:outline-none focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10 transition-all">
+        </div>
+
+        <div id="header-controls" hx-get="/htmx/header" hx-trigger="load" hx-target="#header-controls"></div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-6 py-8">
+
+        <!-- Cozy Notes Grid -->
+        <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"
+             hx-get="/htmx/notes" hx-trigger="load, noteChanged from:body" hx-target="#notes-grid">
+            <!-- HTMX Warm Skeleton Loaders -->
+            <div class="animate-pulse bg-white border border-amber-900/5 rounded-3xl p-6 h-48 space-y-3 shadow-sm">
+                <div class="h-5 bg-amber-100/60 rounded-md w-3/4"></div>
+                <div class="h-3.5 bg-amber-50 rounded-md w-full"></div>
+                <div class="h-3.5 bg-amber-50 rounded-md w-5/6"></div>
+            </div>
+            <div class="animate-pulse bg-white border border-amber-900/5 rounded-3xl p-6 h-48 space-y-3 shadow-sm">
+                <div class="h-5 bg-amber-100/60 rounded-md w-2/3"></div>
+                <div class="h-3.5 bg-amber-50 rounded-md w-full"></div>
+                <div class="h-3.5 bg-amber-50 rounded-md w-4/5"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Authentication Modal (Cozy Warm Style) -->
+    <div class="fixed inset-0 bg-slate-900/30 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+         x-show="authOpen" x-cloak x-transition.opacity style="display: none;">
+        <div class="bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-amber-900/10 relative" @click.outside="authOpen = false">
+            <button class="absolute right-5 top-5 text-slate-400 hover:text-slate-600 text-lg" @click="authOpen = false">✕</button>
+
+            <!-- Auth Tabs -->
+            <div class="flex border-b border-amber-900/10 mb-6">
+                <button class="flex-1 pb-3 text-center text-sm font-serif font-bold border-b-2 transition-colors"
+                        :class="authMode === 'login' ? 'border-amber-700 text-amber-800' : 'border-transparent text-slate-400'"
+                        @click="authMode = 'login'">Log In</button>
+                <button class="flex-1 pb-3 text-center text-sm font-serif font-bold border-b-2 transition-colors"
+                        :class="authMode === 'register' ? 'border-amber-700 text-amber-800' : 'border-transparent text-slate-400'"
+                        @click="authMode = 'register'">Sign Up</button>
+            </div>
+
+            <!-- HTMX Login Form -->
+            <form hx-post="/htmx/auth/login" hx-target="#auth-error-msg" hx-swap="innerHTML" class="space-y-4" x-show="authMode === 'login'">
+                <div id="auth-error-msg"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Email or Username</label>
+                    <input type="text" name="email" placeholder="you@example.com" required autocomplete="username"
+                           class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                    <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password"
+                           class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10">
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-amber-700 hover:bg-amber-800 text-amber-50 font-bold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all mt-2">
+                    Log In <i class="ri-login-box-line"></i>
+                </button>
+            </form>
+
+            <!-- HTMX Register Form -->
+            <form hx-post="/htmx/auth/register" hx-target="#reg-error-msg" hx-swap="innerHTML" class="space-y-4" x-show="authMode === 'register'">
+                <div id="reg-error-msg"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Username</label>
+                    <input type="text" name="username" placeholder="alex123" required minlength="3" autocomplete="username"
+                           class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                    <input type="email" name="email" placeholder="alex@example.com" required autocomplete="email"
+                           class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                    <input type="password" name="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password"
+                           class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-amber-700/40 focus:ring-2 focus:ring-amber-700/10">
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-amber-700 hover:bg-amber-800 text-amber-50 font-bold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all mt-2">
+                    Create Account <i class="ri-user-add-line"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Note Editor Modal (Cozy Paper Style) -->
+    <div id="note-modal" class="fixed inset-0 bg-slate-900/30 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+         x-show="noteOpen" x-cloak x-transition.opacity style="display: none;">
+        <div class="bg-white rounded-3xl p-7 max-w-xl w-full shadow-2xl border border-amber-900/10 relative" @click.outside="noteOpen = false">
+            <div class="flex items-center justify-between pb-3 border-b border-amber-900/10 mb-4">
+                <h3 class="font-serif font-bold text-lg text-slate-900">Write a Note</h3>
+                <button class="text-slate-400 hover:text-slate-600 text-lg" @click="noteOpen = false">✕</button>
+            </div>
+
+            <!-- HTMX Note Form -->
+            <form hx-post="/htmx/notes" hx-target="#notes-grid" hx-swap="afterbegin" class="space-y-4" @submit="noteOpen = false">
+                <div>
+                    <input type="text" name="title" placeholder="Title..." autocomplete="off"
+                           class="w-full font-serif font-bold text-2xl text-slate-900 placeholder-slate-300 px-0 py-1 border-b border-amber-900/10 focus:outline-none focus:border-amber-700">
+                </div>
+
+                <div>
+                    <textarea name="content" placeholder="Write your thoughts..." rows="7"
+                              class="w-full text-sm leading-relaxed text-slate-700 placeholder-slate-400 px-0 py-1 focus:outline-none resize-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-amber-900/10">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Color Tag</label>
+                        <div class="flex items-center gap-3 text-xs font-medium text-slate-700">
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="color" value="#d97706" checked class="accent-amber-600" /> Warm Amber</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="color" value="#059669" class="accent-emerald-600" /> Soft Sage</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="color" value="#e11d48" class="accent-rose-600" /> Rose</label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tags</label>
+                        <input type="text" name="tags" placeholder="journal, ideas"
+                               class="w-full bg-amber-50/50 border border-amber-900/10 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-amber-700">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-4 border-t border-amber-900/10">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="is_pinned" class="rounded accent-amber-700">
+                        <span class="text-xs font-bold text-slate-700">Pin Note</span>
+                    </label>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="px-4 py-2 text-slate-500 hover:text-slate-800 text-xs font-bold" @click="noteOpen = false">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-amber-50 text-xs font-bold uppercase tracking-wider rounded-full shadow-xs transition-all">
+                            <i class="ri-save-line"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
