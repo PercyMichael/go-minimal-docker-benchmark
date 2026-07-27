@@ -223,6 +223,42 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 
 ---
 
+## ☁️ Production Cloud Deployment Architecture & Provider Matrix
+
+### 1. Cloud Provider Matrix
+
+| Provider | Cost / Month | Setup Complexity | Latency to Uganda | Verdict |
+| :--- | :---: | :---: | :---: | :--- |
+| **DigitalOcean** | **`$12 – $24 / mo`** | 🟢 Easy | ⚡️ Low (~120ms Frankfurt) | **🏆 BEST FOR LAUNCH** |
+| **Hetzner Cloud** | **`$5 – $12 / mo`** | 🟢 Easy | ⚡️ Low (~130ms Germany) | **🏆 BEST ULTRA-LOW COST** |
+| **Cloudflare** | **`$0 / mo` (Free)** | 🟢 Easy | 🌍 Global Edge | **🛡️ MANDATORY FRONT LAYER** |
+| **AWS (EC2/RDS)** | **`$80 – $200 / mo`** | 🔴 Complex | 🟡 Medium (~90ms Cape Town) | ⚠️ Overkill for Day 1 |
+| **GCP (Cloud Run)**| **`$10 – $50 / mo`** | 🟡 Moderate | 🟡 Medium | ⏸️ Reserve for Phase 2 |
+
+### 2. Hybrid Production Architecture
+
+```text
+[ Mobile App Clients in Kampala ]
+               │
+               ▼
+   [ 🛡️ Cloudflare (FREE) ] ──► DNS, Auto-SSL, Anti-DDoS Shield, WAF
+               │
+               ▼
+   [ 🖥️ DigitalOcean Droplet ($12/mo) ]
+   - Caddy Web Server (Reverse Proxy)
+   - Go Scratch Docker Container (5.7 MB static binary)
+   - PostgreSQL 16 + PostGIS Docker
+   - Redis 7 Docker (Spatial GEO Index)
+```
+
+### 3. Deployment Prerequisites Checklist
+1. **Domain Name**: Register a domain (e.g., `your-app.com` or `.ug`).
+2. **Cloudflare DNS**: Point domain to Cloudflare for free SSL & DDoS protection.
+3. **DigitalOcean Droplet**: $12/month Ubuntu 24.04 Droplet in Frankfurt node.
+4. **GitHub Secrets**: Add `SSH_HOST`, `SSH_USER`, `SSH_KEY` to GitHub repo for 30-second automated deployment via [`.github/workflows/deploy.yml`](file:///.github/workflows/deploy.yml).
+
+---
+
 ## 🚀 Go-To-Market (GTM) & Growth Playbook
 
 ### 1. Boda Stage Chairman Strategy
