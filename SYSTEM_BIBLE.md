@@ -256,11 +256,34 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
    - Redis 7 Docker (Spatial GEO Index)
 ```
 
-### 3. Deployment Prerequisites Checklist
-1. **Domain Name**: Register a domain (e.g., `your-app.com` or `.ug`).
-2. **Cloudflare DNS**: Point domain to Cloudflare for free SSL & DDoS protection.
-3. **DigitalOcean Droplet**: $12/month Ubuntu 24.04 Droplet in Frankfurt node.
-4. **GitHub Secrets**: Add `SSH_HOST`, `SSH_USER`, `SSH_KEY` to GitHub repo for 30-second automated deployment via [`.github/workflows/deploy.yml`](file:///.github/workflows/deploy.yml).
+### 3. Step-by-Step Production Deployment Guide
+
+**Step 1: Provision Infrastructure (Terraform)**
+Run Terraform to create the Droplet, Managed Postgres, Managed Redis, and configure Cloudflare DNS.
+```bash
+cd deploy/terraform
+terraform init
+terraform apply
+```
+*Note the output values for `server_ip`, `postgres_uri`, and `redis_uri`.*
+
+**Step 2: Configure GitHub Secrets for CI/CD**
+To allow GitHub Actions to automatically deploy your code and configure your databases, add these 5 secrets to your repository (Settings > Secrets and variables > Actions):
+- `VPS_HOST`: The `server_ip` from Terraform
+- `VPS_USER`: `root` (or your Droplet username)
+- `VPS_SSH_KEY`: The contents of your private SSH key (`~/.ssh/id_rsa`)
+- `DATABASE_URL`: The `postgres_uri` from Terraform (e.g., `postgresql://...`)
+- `REDIS_URL`: The `redis_uri` from Terraform (e.g., `redis://...`)
+
+**Step 3: Push to Deploy!**
+Commit your code and push to the `main` branch. 
+GitHub Actions will automatically:
+1. Build the Go binary and push it to GHCR.
+2. SSH into your Droplet.
+3. Automatically generate the secure `.env` file using your GitHub Secrets.
+4. Launch the application.
+
+You are live with zero manual server configuration!
 
 ### 4. Infrastructure Scaling Management Matrix (Terraform IaC)
 
@@ -269,6 +292,72 @@ func CalculateUgandaFare(distanceKm, durationMins, promoDiscount float64, rates 
 | **Stage 1: Vertical Upgrade** | 0 – 10,000 Drivers | Update `size = "s-4vcpu-8gb"` in `main.tf` | `terraform apply` | **< 90 seconds** |
 | **Stage 2: Horizontal Load Balancer** | 10,000 – 50,000 Drivers | Add `count = 3` + `digitalocean_loadbalancer` in `main.tf` | `terraform apply` | **< 3 minutes** |
 | **Stage 3: Managed High-Availability DB** | 50,000+ Drivers | Add `digitalocean_database_cluster` in `main.tf` | `terraform apply` | **< 5 minutes** |
+
+---
+
+## 📊 Monitoring, Observability & Alerting Strategy
+
+A production application that you cannot observe is an application you cannot trust. This section defines the three-phase monitoring roadmap, from zero-cost pre-launch to enterprise-grade APM.
+
+### 1. Tool Comparison: Datadog vs. Grafana
+
+| Dimension | Grafana + Prometheus (OSS) | Datadog (SaaS) |
+| :--- | :--- | :--- |
+| **Cost** | **Free** (just the Droplet, ~$6/mo) | **$15+/server/month + log volume fees** |
+| **Setup Time** | 1–2 days to wire Prometheus + Loki + Grafana | **~10 minutes** (install agent, done) |
+| **Dashboard Quality** | 🏆 World-class custom dashboards (TV-screen maps of rides in Kampala) | Good, but less flexible |
+| **APM (Code-level tracing)** | Basic | 🏆 Industry best. Traces exact slow DB queries per request |
+| **Log Aggregation** | Via Loki (self-managed) | 🏆 Built-in, instant search |
+| **AI Anomaly Alerts** | Manual threshold rules | 🏆 ML-powered (learns your traffic patterns) |
+| **Best For** | Bootstrapped startups, cost control | Funded teams, rapid debugging |
+
+### 2. Three-Phase Monitoring Rollout
+
+| Phase | When | Tooling | Cost |
+| :--- | :--- | :--- | :--- |
+| **Phase 1: Pre-Launch** | Day 1 (Now) | DigitalOcean CPU/RAM Alerts (Terraform `digitalocean_monitor_alert`) + Go structured JSON logs | **$0/mo** |
+| **Phase 2: Growing** | 1,000+ rides/day | Grafana + Prometheus on a dedicated $6/mo Droplet. Scrape Go `/metrics` endpoint. Loki for log search | **$6/mo** |
+| **Phase 3: Scaled** | Raised funding / 50,000+ drivers | Datadog. Install agent on all Droplets. Full APM, distributed tracing, AI anomaly detection | **$50–$200/mo** |
+
+### 3. Phase 2 Architecture (Grafana Stack)
+
+The Grafana stack uses a 3-tool chain. Each tool has one job:
+
+```text
+[ Go App on Droplet A ]
+        │
+        │  (Exposes /metrics endpoint via Prometheus Go library)
+        │
+        ▼
+[ Prometheus on Droplet B ]  ──►  Scrapes /metrics every 5s, stores time-series data
+        │
+        ▼
+[ Grafana on Droplet B ]     ──►  Reads from Prometheus, renders beautiful dashboards
+        │
+        ▼
+[ Loki on Droplet B ]        ──►  Aggregates all Go stdout JSON logs for search
+```
+
+**Go Code Change Required:** Install `github.com/prometheus/client_golang` and expose one new route:
+```go
+import "github.com/prometheus/client_golang/prometheus/promhttp"
+
+// Add to Chi router:
+r.Handle("/metrics", promhttp.Handler())
+```
+
+**Caddy Security:** Route `dashboard.yourrideshare.ug` through Caddy with basic auth so Grafana is never publicly accessible.
+
+### 4. Key Metrics to Monitor
+
+| Metric | Source | Critical Threshold | Alert Action |
+| :--- | :--- | :--- | :--- |
+| **API Server CPU** | DigitalOcean (via Terraform alert) | > 80% for 5 min | Scale Droplet vertically |
+| **HTTP Request Rate** | Prometheus Go library | Drop > 50% in 5 min | Investigate app crash |
+| **P99 Response Time** | Prometheus Go library | > 500ms | Investigate slow DB queries |
+| **Postgres Connections** | Prometheus Postgres Exporter | > 80% of `max_connections` | Add `pgBouncer` pooling |
+| **Redis Memory Used** | Prometheus Redis Exporter | > 80% RAM | Upgrade Redis cluster size |
+| **Failed Trip Bookings** | Custom business metric in Go | > 5% error rate | Page on-call engineer |
 
 ---
 

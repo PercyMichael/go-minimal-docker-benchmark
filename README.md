@@ -154,8 +154,34 @@ During development, the container went through **3 distinct build iterations**, 
 
 ## 🌐 VPS & CI/CD Deployment Guide
 
-For full instructions on setting up a $4/month VPS, installing Caddy for automatic HTTPS, setting up GitHub Secrets, and deploying automatically, see the **[DEPLOYMENT.md](file:///Volumes/B/projects/devops%20go/DEPLOYMENT.md)** guide.
+Deploying this architecture to DigitalOcean using Managed Databases and automated GitHub Actions takes less than 10 minutes.
 
+### Step 1: Provision Infrastructure (Terraform)
+Navigate to the terraform directory and apply the infrastructure. This creates the Droplet, Managed Postgres, Managed Redis, and configures Cloudflare DNS.
+```bash
+cd deploy/terraform
+terraform init
+terraform apply
+```
+*Note the output values for `server_ip`, `postgres_uri`, and `redis_uri`.*
+
+### Step 2: Configure GitHub Secrets for CI/CD
+To allow GitHub Actions to automatically deploy your code and configure your databases, add these 5 secrets to your repository (Settings > Secrets and variables > Actions):
+- `VPS_HOST`: The `server_ip` from Terraform
+- `VPS_USER`: `root` (or your Droplet username)
+- `VPS_SSH_KEY`: The contents of your private SSH key (`~/.ssh/id_rsa`)
+- `DATABASE_URL`: The `postgres_uri` from Terraform (e.g., `postgresql://...`)
+- `REDIS_URL`: The `redis_uri` from Terraform (e.g., `redis://...`)
+
+### Step 3: Push to Deploy!
+Commit your code and push to the `main` branch. 
+GitHub Actions will automatically:
+1. Build the Go binary and push it to GHCR.
+2. SSH into your Droplet.
+3. Automatically generate the secure `.env` file using your GitHub Secrets.
+4. Launch `docker-compose.prod.yml`. 
+
+You are live with zero manual server configuration!
 ---
 
 ## 🚀 Quick Start Guide

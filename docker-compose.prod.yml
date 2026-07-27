@@ -5,10 +5,8 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ride-share-api:latest
+    # Pull pre-built image from GitHub Container Registry (GHCR)
+    image: ghcr.io/${GITHUB_REPOSITORY}:latest
     container_name: ride_share_api
     restart: always
     environment:

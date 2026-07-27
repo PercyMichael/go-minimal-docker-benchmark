@@ -73,6 +73,20 @@ resource "digitalocean_droplet" "api_server" {
   ssh_keys           = [digitalocean_ssh_key.deployer.fingerprint]
 
   tags = ["ride-share", "production", "api"]
+
+  # This bash script runs exactly once when the Droplet is first created.
+  # It automatically installs Docker and Docker Compose so the server is ready for your app.
+  user_data = <<-EOF
+    #!/bin/bash
+    apt-get update
+    apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+    apt-get update
+    apt-get install -y docker-ce docker-compose-plugin
+    systemctl start docker
+    systemctl enable docker
+  EOF
 }
 
 # 2. Dedicated Managed PostgreSQL 16 + PostGIS Database Cluster
@@ -158,6 +172,23 @@ resource "digitalocean_firewall" "web_firewall" {
     port_range            = "1-65535"
     destination_addresses = ["0.0.0.0/0", "::/0"]
   }
+}
+
+# Monitor Alert: Notify when API Droplet CPU is high
+resource "digitalocean_monitor_alert" "cpu_alert" {
+  alerts {
+    # Replace with your actual email when deploying
+    email = ["alerts@yourrideshare.ug"]
+  }
+
+  window      = "5m"    # Look at the last 5 minutes of data
+  type        = "v1/insights/droplet/cpu"
+  compare     = "GreaterThan"
+  value       = 80      # 80% CPU utilization
+  description = "Alert: API Server CPU is running high! Time to scale."
+  
+  # Apply this alert to our API droplet
+  entities = [digitalocean_droplet.api_server.id]
 }
 
 # Cloudflare DNS Record (A Record pointing to Droplet IP with Cloudflare Proxy Enabled)

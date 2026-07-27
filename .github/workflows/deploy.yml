@@ -65,12 +65,24 @@ jobs:
     steps:
       - name: Trigger SSH Deployment on VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: DATABASE_URL,REDIS_URL
           script: |
-            cd /opt/devops-go-api || exit 1
-            docker compose pull
-            docker compose up -d --remove-orphans
+            cd ~/devops-go || exit 1
+            git pull origin main
+            
+            # Auto-generate .env file from GitHub Secrets securely
+            echo "DATABASE_URL=$DATABASE_URL" > .env
+            echo "REDIS_URL=$REDIS_URL" >> .env
+            echo "TARGET_DB_NAME=ride_share_db" >> .env
+            
+            export GITHUB_REPOSITORY=${{ github.repository }}
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
