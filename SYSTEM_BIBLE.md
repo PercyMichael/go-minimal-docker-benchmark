@@ -438,3 +438,68 @@ graph TD
     CheckBalance -->|Yes| Active[Driver stays Online for next trip]
     CheckBalance -->|No / Negative| Lockout[Driver account locked until MoMo top-up]
 ```
+
+---
+
+## 🗺️ Hybrid Mapping Engine Architecture
+
+To eliminate massive recurring map API fees while maintaining 100% search accuracy in Kampala, the platform implements a 3-part hybrid mapping stack:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        HYBRID MAPPING ENGINE                           │
+├───────────────────┬──────────────────────────┬─────────────────────────┤
+│ RESPONSIBILITY    │ PROVIDER / TOOL          │ OPERATIONAL COST        │
+├───────────────────┼──────────────────────────┼─────────────────────────┤
+│ 1. Mobile Map UI  │ Mapbox GL Native SDK     │ FREE (up to 50k MAUs)   │
+│ 2. Routing & ETA  │ Self-Hosted OSRM (Docker)│ $0 / Unlimited Requests │
+│ 3. Place Search   │ Google Places API        │ Minimal (~$20/month)    │
+└───────────────────┴──────────────────────────┴─────────────────────────┘
+```
+
+### 1. Cost Comparison: Pure Google Maps vs. Hybrid Engine
+* **Pure Google Maps API:** ~$5 per 1,000 directions + $10 per 1,000 distance matrix requests = **$1,500 – $3,000 / month**.
+* **Hybrid Engine:** **~$20 – $30 / month** (99% cost reduction!).
+
+### 2. OSRM Docker Setup (Zero-Cost Routing)
+OSRM handles exact distance (`4.2 km`), duration (`11 mins`), and polyline rendering over OpenStreetMap data for Uganda:
+
+```bash
+# 1. Download OpenStreetMap extract for Uganda
+wget https://download.geofabrik.de/africa/uganda-latest.osm.pbf
+
+# 2. Process routing graph for Boda / Car profile
+docker run -t -v $(pwd):/data osrm/osrm-backend osrm-extract -p /opt/car.lua /data/uganda-latest.osm.pbf
+docker run -t -v $(pwd):/data osrm/osrm-backend osrm-contract /data/uganda-latest.osrm
+
+# 3. Launch OSRM microservice
+docker run -d -p 5000:5000 -v $(pwd):/data osrm/osrm-backend osrm-routed --algorithm mld /data/uganda-latest.osrm
+```
+
+---
+
+## 🌐 Multi-Country Expansion Architecture
+
+The platform architecture is built to be 100% country-agnostic. Expanding to a new country (e.g. Kenya 🇰🇪, Rwanda 🇷🇼, Tanzania 🇹🇿, Nigeria 🇳🇬) requires **zero code rewrites**, only config parameter adjustments.
+
+### 1. Country Configuration Matrix
+
+| Country | Code | Currency | Default Step Rounding | Mobile Payment Gateway | OSRM Map Extract |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Uganda 🇺🇬** | `UG` | `UGX` | `500 UGX` | MTN MoMo / Airtel Money | `uganda-latest.osm.pbf` |
+| **Kenya 🇰🇪** | `KE` | `KES` | `10 KES` | Safaricom M-PESA (Daraja API) | `kenya-latest.osm.pbf` |
+| **Rwanda 🇷🇼** | `RW` | `RWF` | `100 RWF` | MTN Mobile Money Rwanda | `rwanda-latest.osm.pbf` |
+| **Tanzania 🇹🇿** | `TZ` | `TZS` | `500 TZS` | Vodacom M-Pesa / Tigo Pesa | `tanzania-latest.osm.pbf` |
+| **Nigeria 🇳🇬** | `NG` | `NGN` | `100 NGN` | Paystack / Flutterwave | `nigeria-latest.osm.pbf` |
+
+### 2. Pluggable Payment Provider Interface (Go)
+
+```go
+type PaymentProvider interface {
+    TopUpWallet(ctx context.Context, phoneNumber string, amount int64) (*PaymentResponse, error)
+    DisburseEarnings(ctx context.Context, phoneNumber string, amount int64) (*PaymentResponse, error)
+}
+```
+
+By adhering to this interface, switching or adding new country payment integrations (e.g. M-PESA for Kenya or Paystack for Nigeria) is isolated to a single package implementation.
+
